@@ -14,7 +14,6 @@ export default function Sensors() {
   const [thresholds, setThresholds] = useState({});
   const [thresholdsInput, setThresholdsInput] = useState({ min: '', max: '' });
   const [activeSection, setActiveSection] = useState(null); //'addDevice' / 'threshold' / null
-  const [loading, setLoading] = useState(false);
 
   const fetchDevices = () => {
     fetch('http://127.0.0.1:8081/getSensorDevice')
@@ -54,7 +53,6 @@ export default function Sensors() {
     };
 
     try {
-      setLoading(true);
       const response = await fetch('http://127.0.0.1:8081/addSensorDevice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -69,8 +67,6 @@ export default function Sensors() {
       fetchDevices();
     } catch (err) {
       console.error('Failed to send device to backend:', err);
-    }finally{
-      setLoading(false);
     }
     document.getElementById('newLocation').value = '';
     document.getElementById('newFrequency').value = '';
@@ -82,7 +78,7 @@ export default function Sensors() {
     };
     try {
       const response = await fetch('http://127.0.0.1:8081/deleteSensorDevice',{
-        method: 'DELETE',
+        method: 'POST',
         headers:  {'Content-Type':'application/json'},
         body: JSON.stringify(deviceID)
       });
@@ -101,13 +97,32 @@ export default function Sensors() {
     }
   };
 
-  const toggleDevice = (id) => {
-    setDevices(devices.map(device => device.id === id ? { ...device, active: !device.active } : device));
+  const updateDeviceStatus = async (deviceIDs, targetStatus) => {
+    try {
+      const response = await fetch('http://127.0.0.1:8081/updateDeviceStatus',{
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          device_ids: deviceIDs,
+          target_status: targetStatus
+        })
+      });
+      if (!response.ok){
+        throw new Error('Update failed')
+      }
+      await fetchDevices()
+    } catch (err) {
+      console.log('Failed to update device status',err)
+    }
+  }
+
+  const toggleDevice = (id, active) => {
+    updateDeviceStatus([id.split('-')[1]], !active)
   };
 
-  const toggleAll = () => {
-    const currentStatus = filteredDevices.some(d => !d.active);
-    setDevices(devices.map(d => d.type === newDeviceType ? { ...d, active: currentStatus } : d));
+  const toggleAll = (turnOn) => {
+    const ids = filteredDevices.map(d => d.id.split('-')[1]);
+    updateDeviceStatus(ids, turnOn)
   };
 
   const handleSetThreshold = () => {
@@ -151,8 +166,8 @@ export default function Sensors() {
         </select>
         <button style={switchBtnStyle} onClick={() => setActiveSection(prev => (prev === 'add' ? null : 'add'))}>Add Device</button>
         <button style={{...switchBtnStyle, marginLeft: '15px' }} onClick={() => setActiveSection(prev => (prev === 'threshold' ? null : 'threshold'))}>Set Threshold</button>
-        <button style={{ ...switchBtnStyle, marginLeft: '15px' }} onClick={toggleAll}>Turn On All </button>
-        <button style={{ ...switchBtnStyle, marginLeft: '15px' }} onClick={toggleAll}>Turn Off All </button>
+        <button style={{ ...switchBtnStyle, marginLeft: '15px' }} onClick={() => toggleAll(true)}>Turn On All </button>
+        <button style={{ ...switchBtnStyle, marginLeft: '15px' }} onClick={() => toggleAll(false)}>Turn Off All </button>
       </div>
 
       {activeSection === 'add' && (
@@ -175,7 +190,7 @@ export default function Sensors() {
               placeholder="Update Frequency (s)"
             />
           </label>
-          <button style={{ ...switchBtnStyle, marginLeft: '10px' }} onClick={handleAddDeviceSubmit} disabled={loading}>{loading ? 'Submitting...' : 'Submit'}</button>
+          <button style={{ ...switchBtnStyle, marginLeft: '10px' }} onClick={handleAddDeviceSubmit} >Submit</button>
         </div>
       )}
 
@@ -220,8 +235,8 @@ export default function Sensors() {
               <td style={tdStyle}>{device.updateFrequency}</td>
               <td style={{ ...tdStyle, fontWeight: 'bold', color: device.active ? 'green' : 'red' }}>{device.active ? 'on' : 'off'}</td>
               <td style={tdStyle}>
-                <button style={switchBtnStyle} onClick={() => toggleDevice(device.id)}>Switch</button>
-                <button style={deleteBtnStyle} onClick={() => deleteDevice(device.id)}>Delete</button>
+                <button style={switchBtnStyle} onClick={() => toggleDevice(device.id, device.active)}>Switch</button>
+                <button style={deleteBtnStyle} onClick={() => deleteDevice(device.id)} >Delete</button>
               </td>
             </tr>
           ))}
