@@ -8,10 +8,10 @@ const WS_URL = 'ws://localhost:8000/ws/sensor'; // WebSocket 接口
 const THRESHOLD_API = 'http://localhost:8000/api/thresholds'; // REST API 获取阈值
 
 const LABELS = {
-  Temperature: 'Temperature (°C)',
+  Temperature: 'Temperature (Cel)',
   Moisture: 'Moisture (%)',
   Lightness: 'Lightness (lx)',
-  Co2: 'CO2 Concentration (ppm)',
+  Co2: 'CO2_Concentration (ppm)',
 };
 
 export default function RealtimeChart({ sensorType }) {

@@ -1,23 +1,97 @@
-// src/pages/Actuators.jsx
 import { useState } from 'react';
 
-const initialDevices = [
-  ...Array.from({ length: 15 }, (_, i) => ({ id: `Heater-${i + 1}`, type: 'Heater', active: true })),
-  ...Array.from({ length: 15 }, (_, i) => ({ id: `Cooler-${i + 1}`, type: 'Cooler', active: true })),
-  ...Array.from({ length: 6 }, (_, i) => ({ id: `Drip-${i + 1}`, type: 'Drip irrigation pipe', active: true })),
-  ...Array.from({ length: 8 }, (_, i) => ({ id: `Led-${i + 1}`, type: 'LED Light', active: true })),
-  ...Array.from({ length: 2 }, (_, i) => ({ id: `Co2_generator-${i + 1}`, type: 'Carbon Dioxide Generator', active: true })),
-  ...Array.from({ length: 10 }, (_, i) => ({ id: `Fan-${i + 1}`, type: 'Exhaust Fan', active: true })),
-  ...Array.from({ length: 8 }, (_, i) => ({ id: `Shade-${i + 1}`, type: 'Sunshade Net', active: true })),
-];
+const generateActuators = (label, count) => {
+  const baseName = label
+    .replace(/ /g, '_')
+    .replace(/-/g, '_')
+    .replace(/[^a-zA-Z0-9_]/g, '');
+  const devices = [];
+  for (let i = 0; i < count; i++) {
+    const index = i + 1;
+    devices.push({
+      id: `${baseName}_${index}`,
+      type: label,
+      location: `location_${index}`,
+      active: true,
+      updateFrequency: '10s'
+    });
+  }
+  return devices;
+};
 
+const initialDevices = [
+  ...generateActuators('Heater', 6),
+  ...generateActuators('Cooler', 6),
+  ...generateActuators('Drip_Irrigation_Pipe', 6),
+  ...generateActuators('LED_Light', 6),
+  ...generateActuators('Carbon_Dioxide_Generator', 6),
+  ...generateActuators('Exhaust_Fan', 6),
+  ...generateActuators('Sunshade_Net', 6),
+];
 export default function Actuators() {
   const [devices, setDevices] = useState(initialDevices);
   const [newDeviceType, setNewDeviceType] = useState('Heater');
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newDeviceData, setNewDeviceData] = useState({ location: '', frequency: '' });
 
-  const addDevice = () => {
-    const id = `${newDeviceType.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z-]/g, '')}-${devices.length + 1}`;
-    setDevices([...devices, { id, type: newDeviceType, active: true }]);
+  const actuatorTypes = [
+    'Heater',
+    'Cooler',
+    'Drip_Irrigation_Pipe',
+    'LED_Light',
+    'Carbon_Dioxide_Generator',
+    'Exhaust_Fan',
+    'Sunshade_Net'
+  ];
+
+  const turnOnAll = () => {
+    setDevices(devices.map(d =>
+      d.type === newDeviceType ? { ...d, active: true } : d
+    ));
+  };
+
+  const turnOffAll = () => {
+    setDevices(devices.map(d =>
+      d.type === newDeviceType ? { ...d, active: false } : d
+    ));
+  };
+  const handleAddDeviceSubmit = async () => {
+    const location = newDeviceData.location.trim();
+    const freq = newDeviceData.frequency.trim();
+    if (!location || isNaN(freq) || Number(freq) <= 0) {
+      alert("Please enter a valid location and a positive numeric frequency.");
+      return;
+    }
+
+    const sameType = devices.filter(d => d.type === newDeviceType);
+    const index = sameType.length + 1;
+    const baseName = newDeviceType
+      .replace(/ /g, '_')
+      .replace(/-/g, '_')
+      .replace(/[^a-zA-Z0-9_]/g, '');
+
+    const newDevice = {
+      id: `${baseName}_${index}`,
+      type: newDeviceType,
+      location,
+      active: true,
+      updateFrequency: `${freq}s`
+    };
+
+    setDevices([...devices, newDevice]);
+    setNewDeviceData({ location: '', frequency: '' });
+    setShowAddForm(false);
+
+    try {
+      await fetch('/api/actuators', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newDevice)
+      });
+      console.log('Actuator submitted to backend');
+    } catch (err) {
+      console.error('Failed to submit actuator:', err);
+    }
   };
 
   const deleteDevice = (id) => {
@@ -25,38 +99,32 @@ export default function Actuators() {
   };
 
   const toggleDevice = (id) => {
-    setDevices(devices.map(device => device.id === id ? { ...device, active: !device.active } : device));
-  };
-
-  const toggleAll = () => {
-    const currentStatus = filteredDevices.some(d => !d.active);
-    setDevices(devices.map(d => d.type === newDeviceType ? { ...d, active: currentStatus } : d));
+    setDevices(devices.map(device =>
+      device.id === id ? { ...device, active: !device.active } : device
+    ));
   };
 
   const filteredDevices = devices.filter(device => device.type === newDeviceType);
 
-  const actuatorTypes = [
-    'Heater',
-    'Cooler',
-    'Drip irrigation pipe',
-    'LED Light',
-    'Carbon Dioxide Generator',
-    'Exhaust Fan',
-    'Sunshade Net'
-  ];
-
+  const thStyle = { padding: '12px', textAlign: 'left', fontWeight: 'bold', borderBottom: '1px solid #ccc' };
+  const tdStyle = { padding: '12px', borderBottom: '1px solid #eee' };
+  const rowStyle = (index) => ({
+    backgroundColor: index % 2 === 0 ? '#ffffff' : '#f5f5f5',
+    transition: 'background-color 0.2s',
+    cursor: 'pointer'
+  });
+  const switchBtnStyle = { backgroundColor: '#d4edda', padding: '6px 12px', border: 'none', borderRadius: '4px' };
+  const deleteBtnStyle = { backgroundColor: '#f8d7da', padding: '6px 12px', border: 'none', borderRadius: '4px', marginLeft: '10px' };
   return (
     <div style={{ padding: '24px' }}>
-      <h1
-        style={{
-          fontSize: '24px',
-          fontWeight: 'bold',
-          marginBottom: '24px',
-          backgroundColor: '#4A7755',
-          color: 'white',
-          padding: '10px 24px'
-        }}
-      >
+      <h1 style={{
+        fontSize: '24px',
+        fontWeight: 'bold',
+        marginBottom: '24px',
+        backgroundColor: '#4A7755',
+        color: 'white',
+        padding: '10px 24px'
+      }}>
         Actuators Management
       </h1>
 
@@ -72,79 +140,73 @@ export default function Actuators() {
             <option key={type}>{type}</option>
           ))}
         </select>
-        <button
-          style={{ backgroundColor: '#d4edda', padding: '6px 12px', border: 'none', borderRadius: '4px' }}
-          onClick={addDevice}
-        >
-          Add Device
-        </button>
-        <button
-          style={{ backgroundColor: '#d4edda', padding: '6px 12px', border: 'none', borderRadius: '4px', marginLeft: '10px' }}
-          onClick={toggleAll}
-        >
-          Turn On/Off
-        </button>
+        <button style={switchBtnStyle} onClick={() => setShowAddForm(!showAddForm)}>Add Device</button>
+        <button style={{ ...switchBtnStyle, marginLeft: '10px' }} onClick={turnOnAll}>Turn On All</button>
+        <button style={{ ...switchBtnStyle, marginLeft: '10px' }} onClick={turnOffAll}>Turn Off All</button>
       </div>
 
-      <table
-        style={{
-          width: '100%',
-          borderCollapse: 'separate',
-          borderSpacing: 0,
-          backgroundColor: '#f9f9f9',
-          boxShadow: '0 0 8px rgba(0,0,0,0.05)',
-          border: '1px solid #ddd'
-        }}
-      >
+      {showAddForm && (
+        <div style={{ marginBottom: '20px' }}>
+          <h3 style={{ marginBottom: '8px' }}>New Actuator Info</h3>
+          <label>
+            Location:{' '}
+            <input
+              type="text"
+              value={newDeviceData.location}
+              onChange={(e) => setNewDeviceData({ ...newDeviceData, location: e.target.value })}
+            />
+          </label>
+          <label style={{ marginLeft: '10px' }}>
+            Update Frequency (s):{' '}
+            <input
+              type="text"
+              value={newDeviceData.frequency}
+              onChange={(e) => setNewDeviceData({ ...newDeviceData, frequency: e.target.value })}
+            />
+          </label>
+          <button style={{ ...switchBtnStyle, marginLeft: '10px' }} onClick={handleAddDeviceSubmit}>
+            Submit
+          </button>
+        </div>
+      )}
+      <table style={{
+        width: '100%',
+        borderCollapse: 'separate',
+        borderSpacing: 0,
+        backgroundColor: '#f9f9f9',
+        boxShadow: '0 0 8px rgba(0,0,0,0.05)',
+        border: '1px solid #ddd'
+      }}>
         <thead style={{ backgroundColor: '#e6f4ea' }}>
           <tr>
-            <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold', borderBottom: '1px solid #ccc' }}>Actuator ID</th>
-            <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold', borderBottom: '1px solid #ccc' }}>Type</th>
-            <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold', borderBottom: '1px solid #ccc' }}>Active</th>
-            <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold', borderBottom: '1px solid #ccc' }}>Actions</th>
+            <th style={thStyle}>Actuator ID</th>
+            <th style={thStyle}>Location</th>
+            <th style={thStyle}>Description</th>
+            <th style={thStyle}>Active</th>
+            <th style={thStyle}>Actions</th>
           </tr>
         </thead>
         <tbody>
           {filteredDevices.map((device, index) => (
             <tr
               key={device.id}
-              style={{
-                backgroundColor: index % 2 === 0 ? '#ffffff' : '#f5f5f5',
-                transition: 'background-color 0.2s',
-                cursor: 'pointer'
-              }}
+              style={rowStyle(index)}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#eef2f0'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = index % 2 === 0 ? '#ffffff' : '#f5f5f5'}
             >
-              <td style={{ padding: '12px', borderBottom: '1px solid #eee' }}>{device.id}</td>
-              <td style={{ padding: '12px', borderBottom: '1px solid #eee' }}>{device.type}</td>
-              <td style={{ padding: '12px', borderBottom: '1px solid #eee', fontWeight: 'bold', color: device.active ? 'green' : 'red' }}>
+              <td style={tdStyle}>{device.id}</td>
+              <td style={tdStyle}>{device.location}</td>
+              <td style={tdStyle}>{device.updateFrequency}</td>
+              <td style={{
+                ...tdStyle,
+                fontWeight: 'bold',
+                color: device.active ? 'green' : 'red'
+              }}>
                 {device.active ? 'on' : 'off'}
               </td>
-              <td style={{ padding: '12px', borderBottom: '1px solid #eee' }}>
-                <button
-                  style={{
-                    backgroundColor: '#d4edda',
-                    padding: '6px 12px',
-                    border: 'none',
-                    borderRadius: '4px'
-                  }}
-                  onClick={() => toggleDevice(device.id)}
-                >
-                  Switch
-                </button>
-                <button
-                  style={{
-                    backgroundColor: '#f8d7da',
-                    padding: '6px 12px',
-                    border: 'none',
-                    borderRadius: '4px',
-                    marginLeft: '10px'
-                  }}
-                  onClick={() => deleteDevice(device.id)}
-                >
-                  Delete
-                </button>
+              <td style={tdStyle}>
+                <button style={switchBtnStyle} onClick={() => toggleDevice(device.id)}>Switch</button>
+                <button style={deleteBtnStyle} onClick={() => deleteDevice(device.id)}>Delete</button>
               </td>
             </tr>
           ))}

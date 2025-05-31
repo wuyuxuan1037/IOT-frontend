@@ -16,7 +16,7 @@ export default function Sensors() {
   const [activeSection, setActiveSection] = useState(null); //'addDevice' / 'threshold' / null
 
   const fetchDevices = () => {
-    fetch('http://127.0.0.1:8081/getSensorDevice')
+    fetch('http://127.0.0.1:8080/sensor/getSensorDevice')
       .then(res => res.json())
       .then(data => {
         const mapped = data.map(d => ({
@@ -32,8 +32,25 @@ export default function Sensors() {
       .catch(err => console.error("Failure to obtain:", err));
   };
 
+  const fetchThreshold = () => {
+    fetch('http://127.0.0.1:8080/controller/getControllerThreshold')
+      .then(res => res.json())
+      .then(data => {
+        const mapped = {};
+          data.forEach(d => {
+          mapped[d.deviceType] = {
+            min: d.thresholdMin,
+            max: d.thresholdMax
+          };
+        });
+    setThresholds(mapped);
+      })
+      .catch(err => console.error("Failure to obtain:", err));
+  };
+
   useEffect(() => {
     fetchDevices();
+    fetchThreshold();
   }, []);
 
   const handleAddDeviceSubmit = async () => {
@@ -53,7 +70,7 @@ export default function Sensors() {
     };
 
     try {
-      const response = await fetch('http://127.0.0.1:8081/addSensorDevice', {
+      const response = await fetch('http://127.0.0.1:8080/sensor/addSensorDevice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newDevice)
@@ -77,7 +94,7 @@ export default function Sensors() {
       deviceID: id.split('-')[1]
     };
     try {
-      const response = await fetch('http://127.0.0.1:8081/deleteSensorDevice',{
+      const response = await fetch('http://127.0.0.1:8080/sensor/deleteSensorDevice',{
         method: 'POST',
         headers:  {'Content-Type':'application/json'},
         body: JSON.stringify(deviceID)
@@ -99,7 +116,7 @@ export default function Sensors() {
 
   const updateDeviceStatus = async (deviceIDs, targetStatus) => {
     try {
-      const response = await fetch('http://127.0.0.1:8081/updateDeviceStatus',{
+      const response = await fetch('http://127.0.0.1:8080/sensor/updateDeviceStatus',{
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
@@ -125,19 +142,35 @@ export default function Sensors() {
     updateDeviceStatus(ids, turnOn)
   };
 
-  const handleSetThreshold = () => {
-    const { min, max } = thresholdsInput;
-    if (isNaN(min) || isNaN(max)) {
-      alert("Please enter valid numeric values for thresholds.");
+  const handleSetThreshold = async () => {
+    const minVal = Number(document.getElementById('changeMinThreshold').value.trim());
+    const maxVal = Number(document.getElementById('changeMaxThreshold').value.trim());
+
+    if (minVal >= maxVal) {
+        alert("Please make the Min value lower than Max.");
       return;
     }
-    setThresholds(prev => ({
-      ...prev,
-      [newDeviceType]: { min, max }
-    }));
-    alert(`Threshold for ${newDeviceType}: min=${min}${unitMap[newDeviceType]}, max=${max}${unitMap[newDeviceType]}`);
 
-    setThresholdsInput({ min: '', max: '' });
+    try {
+      const response = await fetch('http://127.0.0.1:8080/controller/updateControllerThreshold', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          deviceType: newDeviceType,
+          thresholdMin: minVal,
+          thresholdMax: maxVal
+        })
+      })
+      
+      if (!response.ok){
+        throw new Error('Update threshold value failed')
+      }
+      await fetchThreshold()
+    } catch (err) {
+      console.log('Failed to set threshold',err)
+    }
+    document.getElementById('changeMinThreshold').value = '';
+    document.getElementById('changeMaxThreshold').value = '';
   };
 
   const filteredDevices = devices.filter(device => device.type === newDeviceType);
@@ -165,7 +198,7 @@ export default function Sensors() {
           <option>CO2_Concentration</option>
         </select>
         <button style={switchBtnStyle} onClick={() => setActiveSection(prev => (prev === 'add' ? null : 'add'))}>Add Device</button>
-        <button style={{...switchBtnStyle, marginLeft: '15px' }} onClick={() => setActiveSection(prev => (prev === 'threshold' ? null : 'threshold'))}>Set Threshold</button>
+        {/* <button style={{...switchBtnStyle, marginLeft: '15px' }} onClick={() => setActiveSection(prev => (prev === 'threshold' ? null : 'threshold'))}>Set Threshold</button> */}
         <button style={{ ...switchBtnStyle, marginLeft: '15px' }} onClick={() => toggleAll(true)}>Turn On All </button>
         <button style={{ ...switchBtnStyle, marginLeft: '15px' }} onClick={() => toggleAll(false)}>Turn Off All </button>
       </div>
@@ -194,28 +227,26 @@ export default function Sensors() {
         </div>
       )}
 
-      {activeSection === 'threshold' && (
         <>
           <div style={{ marginBottom: '20px' }}>
             <h3 style={{ marginBottom: '8px' }}>Threshold</h3>
             <label>
               Min ({unitMap[newDeviceType]}):{' '}
-              <input type="text" value={thresholdsInput.min} onChange={(e) => setThresholdsInput({ ...thresholdsInput, min: e.target.value })} />
+              <input id = "changeMinThreshold" placeholder = {thresholds[newDeviceType]?`Current MIN is ${thresholds[newDeviceType].min}`:"No MIN set"} type="number" />
             </label>
             <label style={{ marginLeft: '10px' }}>
               Max ({unitMap[newDeviceType]}):{' '}
-              <input type="text" value={thresholdsInput.max} onChange={(e) => setThresholdsInput({ ...thresholdsInput, max: e.target.value })} />
+              <input id = "changeMaxThreshold" placeholder = {thresholds[newDeviceType]?`Current MIN is ${thresholds[newDeviceType].max}`:"No MAX set"} type="number" />
             </label>
             <button onClick={handleSetThreshold} style={{ ...switchBtnStyle, marginLeft: '10px' }}>Save</button>
           </div>
 
           <div style={{ marginTop: '10px', marginBottom: '20px', fontStyle: 'italic', color: '#555' }}>
             {thresholds[newDeviceType]
-              ? `Threshold set for ${newDeviceType}: min = ${thresholds[newDeviceType].min}${unitMap[newDeviceType]}, max = ${thresholds[newDeviceType].max}${unitMap[newDeviceType]}`
+              ? `Threshold set for ${newDeviceType}: min = ${thresholds[newDeviceType].min} ${unitMap[newDeviceType]}, max = ${thresholds[newDeviceType].max} ${unitMap[newDeviceType]}`
               : `No threshold set for ${newDeviceType} yet.`}
           </div>
         </>       
-      )}
 
       <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, backgroundColor: '#f9f9f9', boxShadow: '0 0 8px rgba(0,0,0,0.05)', border: '1px solid #ddd' }}>
         <thead style={{ backgroundColor: '#e6f4ea' }}>

@@ -3,26 +3,70 @@ import { useEffect, useState } from 'react';
 export default function History() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // 替换成你自己的 API 地址
-  const API_URL = 'https://api.thingspeak.com/channels/123456/feeds.json?days=1';
+  const fetchHistoryData = async () => {
+    try {
+      console.log('开始获取数据...');
+      
+      const response = await fetch('http://127.0.0.1:5002/getHistoryData');
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('收到的原始数据:', result);
+      
+      // 检查是否是错误响应
+      if (result.status === 'error') {
+        throw new Error(result.message);
+      }
+      
+      // 处理不同的数据格式
+      let processedData = [];
+      
+      if (Array.isArray(result)) {
+        // 如果直接返回数组
+        processedData = result.map(d => ({
+          DeviceID: d.deviceID,
+          Location: d.deviceLocation,
+          DeviceType: d.deviceType,
+          Value: d.value,
+          Unit: d.unit,
+          Time: d.timestamp
+        }));
+      } else if (result.data && typeof result.data === 'object') {
+        // 如果返回的是 {status: "success", data: {...}}
+        processedData = Object.entries(result.data).map(([deviceId, deviceData]) => {
+          if (deviceData) {
+            return {
+              DeviceID: deviceData.deviceID || deviceId,
+              Location: deviceData.deviceLocation,
+              DeviceType: deviceData.deviceType,
+              Value: deviceData.value,
+              Unit: deviceData.unit,
+              Time: deviceData.timestamp
+            };
+          }
+          return null;
+        }).filter(Boolean);
+      }
+      
+      console.log('处理后的数据:', processedData);
+      setData(processedData);
+      setError(null);
+      
+    } catch (err) {
+      console.error("获取数据失败:", err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const res = await fetch(API_URL);
-        const json = await res.json();
-
-        // 假设我们后端返回的是我们需要的平均值数组
-        setData(json);
-      } catch (err) {
-        console.error('Error fetching history:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchData();
+    fetchHistoryData();
   }, []);
 
   return (
@@ -41,27 +85,45 @@ export default function History() {
         History
       </h1>
 
-      {loading ? (
-        <p>Loading...</p>
-      ) : (
+      {loading && <p>Loading...</p>}
+      
+      {error && (
+        <div style={{ 
+          color: 'red', 
+          padding: '10px', 
+          border: '1px solid red', 
+          borderRadius: '4px',
+          marginBottom: '20px'
+        }}>
+          error: {error}
+        </div>
+      )}
+
+      {!loading && !error && data.length === 0 && (
+        <p>Loading</p>
+      )}
+
+      {!loading && !error && data.length > 0 && (
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ backgroundColor: '#f0f0f0' }}>
+              <th style={thStyle}>DeviceID</th>
+              <th style={thStyle}>Location</th>
+              <th style={thStyle}>DeviceType</th>
+              <th style={thStyle}>Value</th>
+              <th style={thStyle}>Unit</th>
               <th style={thStyle}>Time</th>
-              <th style={thStyle}>Temperature (°C)</th>
-              <th style={thStyle}>Moisture (%)</th>
-              <th style={thStyle}>Lightness (lx)</th>
-              <th style={thStyle}>CO₂ (ppm)</th>
             </tr>
           </thead>
           <tbody>
             {data.map((entry, index) => (
               <tr key={index} style={{ borderBottom: '1px solid #ddd' }}>
-                <td style={tdStyle}>{new Date(entry.timestamp).toLocaleString()}</td>
-                <td style={tdStyle}>{entry.temperature}</td>
-                <td style={tdStyle}>{entry.moisture}</td>
-                <td style={tdStyle}>{entry.lightness}</td>
-                <td style={tdStyle}>{entry.co2}</td>
+                <td style={tdStyle}>{entry.DeviceID}</td>
+                <td style={tdStyle}>{entry.Location}</td>
+                <td style={tdStyle}>{entry.DeviceType}</td>
+                <td style={tdStyle}>{entry.Value}</td>
+                <td style={tdStyle}>{entry.Unit}</td>
+                <td style={tdStyle}>{entry.Time}</td>
               </tr>
             ))}
           </tbody>
