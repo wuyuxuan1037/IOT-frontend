@@ -10,7 +10,7 @@ const unitMap = {
 
 export default function Sensors() {
   const [devices, setDevices] = useState([]);
-  const [newDeviceType, setNewDeviceType] = useState('Temperature');
+  const [newDeviceType, setNewDeviceType] = useState('All');
   const [thresholds, setThresholds] = useState({});
   const [thresholdsInput, setThresholdsInput] = useState({ min: '', max: '' });
   const [activeSection, setActiveSection] = useState(null); //'addDevice' / 'threshold' / null
@@ -173,7 +173,7 @@ export default function Sensors() {
     document.getElementById('changeMaxThreshold').value = '';
   };
 
-  const filteredDevices = devices.filter(device => device.type === newDeviceType);
+  const filteredDevices = newDeviceType === 'All' ? devices : devices.filter(device => device.type === newDeviceType);
   const thStyle = { padding: '12px', textAlign: 'left', fontWeight: 'bold', borderBottom: '1px solid #ccc' };
   const tdStyle = { padding: '12px', borderBottom: '1px solid #eee' };
   const rowStyle = (index) => ({
@@ -192,18 +192,23 @@ export default function Sensors() {
       <div style={{ marginBottom: '20px' }}>
         <label htmlFor="deviceType">Filter & Add Devices by Type: </label>
         <select id="deviceType" value={newDeviceType} onChange={(e) => setNewDeviceType(e.target.value)} style={{ marginRight: '10px', cursor: 'pointer' }}>
-          <option>Temperature</option>
-          <option>Soil_Moisture</option>
-          <option>Lightness</option>
-          <option>CO2_Concentration</option>
+          <option value="All">All</option>
+          <option value="Temperature">Temperature</option>
+          <option value="Soil_Moisture">Soil_Moisture</option>
+          <option value="Lightness">Lightness</option>
+          <option value="CO2_Concentration">CO2_Concentration</option>
         </select>
-        <button style={switchBtnStyle} onClick={() => setActiveSection(prev => (prev === 'add' ? null : 'add'))}>Add Device</button>
-        {/* <button style={{...switchBtnStyle, marginLeft: '15px' }} onClick={() => setActiveSection(prev => (prev === 'threshold' ? null : 'threshold'))}>Set Threshold</button> */}
+        <button style={{backgroundColor: newDeviceType === 'All' ? '#ccc' : switchBtnStyle.backgroundColor, padding: '6px 12px', 
+          border: 'none', borderRadius: '4px', cursor: newDeviceType === 'All' ? 'not-allowed' : 'pointer' }}
+          onClick={() => setActiveSection(prev => (prev === 'add' ? null : 'add'))} disabled={newDeviceType === 'All'}>Add Device</button>
+        {/* <button style={{marginLeft: '15px',backgroundColor: newDeviceType === 'All' ? '#ccc' : switchBtnStyle.backgroundColor, padding: '6px 12px', 
+          border: 'none', borderRadius: '4px', cursor: newDeviceType === 'All' ? 'not-allowed' : 'pointer' }}
+          onClick={() => setActiveSection(prev => (prev === 'threshold' ? null : 'threshold'))} disabled={newDeviceType === 'All'}>Set Threshold</button> */}
         <button style={{ ...switchBtnStyle, marginLeft: '15px' }} onClick={() => toggleAll(true)}>Turn On All </button>
         <button style={{ ...switchBtnStyle, marginLeft: '15px' }} onClick={() => toggleAll(false)}>Turn Off All </button>
       </div>
 
-      {activeSection === 'add' && (
+      {activeSection === 'add' && newDeviceType !== 'All' &&  (
         <div style={{ marginTop: '20px', marginBottom: '20px' }}>
           <h3 style={{ marginBottom: '8px' }}>New Device Info</h3>
           <label>
@@ -211,7 +216,6 @@ export default function Sensors() {
             <input
               id = "newLocation"
               type="text"
-              placeholder = "Device Location"
             />
           </label>
           <label style={{ marginLeft: '10px' }}>
@@ -220,33 +224,42 @@ export default function Sensors() {
               id = "newFrequency"
               type="number"
               min="1"
-              placeholder="Update Frequency (s)"
             />
           </label>
-          <button style={{ ...switchBtnStyle, marginLeft: '10px' }} onClick={handleAddDeviceSubmit} >Submit</button>
+          <button style={{ ...switchBtnStyle, marginLeft: '10px', backgroundColor: newDeviceType === 'All' ? '#ccc' : switchBtnStyle.backgroundColor,
+                                                          cursor: newDeviceType === 'All' ? 'not-allowed' : 'pointer' }} onClick={handleAddDeviceSubmit} >Submit</button>
         </div>
       )}
 
-        <>
-          <div style={{ marginBottom: '20px' }}>
-            <h3 style={{ marginBottom: '8px' }}>Threshold</h3>
-            <label>
-              Min ({unitMap[newDeviceType]}):{' '}
-              <input id = "changeMinThreshold" placeholder = {thresholds[newDeviceType]?`Current MIN is ${thresholds[newDeviceType].min}`:"No MIN set"} type="number" />
-            </label>
-            <label style={{ marginLeft: '10px' }}>
-              Max ({unitMap[newDeviceType]}):{' '}
-              <input id = "changeMaxThreshold" placeholder = {thresholds[newDeviceType]?`Current MIN is ${thresholds[newDeviceType].max}`:"No MAX set"} type="number" />
-            </label>
-            <button onClick={handleSetThreshold} style={{ ...switchBtnStyle, marginLeft: '10px' }}>Save</button>
-          </div>
-
-          <div style={{ marginTop: '10px', marginBottom: '20px', fontStyle: 'italic', color: '#555' }}>
-            {thresholds[newDeviceType]
-              ? `Threshold set for ${newDeviceType}: min = ${thresholds[newDeviceType].min} ${unitMap[newDeviceType]}, max = ${thresholds[newDeviceType].max} ${unitMap[newDeviceType]}`
-              : `No threshold set for ${newDeviceType} yet.`}
-          </div>
-        </>       
+      {newDeviceType !== 'All' && (<>
+        <div style={{ marginBottom: '20px' }}>
+          <h3 style={{ marginBottom: '8px' }}>Threshold</h3>
+          <label>
+            Min ({unitMap[newDeviceType]}):{' '}
+            <input id = "changeMinThreshold" placeholder={thresholds[newDeviceType]
+                  ? `Current MIN is ${thresholds[newDeviceType].min}`
+                  : 'No Min set'
+              } type="number" />
+          </label>
+          <label style={{ marginLeft: '10px' }}>
+            Max ({unitMap[newDeviceType]}):{' '}
+            <input id = "changeMaxThreshold" placeholder={thresholds[newDeviceType]
+                  ? `Current MAX is ${thresholds[newDeviceType].max}`
+                  : 'No Max set'
+              } type="number" />
+          </label>
+          <button onClick={handleSetThreshold} style={{ ...switchBtnStyle, marginLeft: '10px',backgroundColor: switchBtnStyle.backgroundColor,
+                      cursor: 'pointer' }} >Save</button>
+        </div>
+      </> )}
+          
+      <div style={{ marginTop: '10px', marginBottom: '20px', fontStyle: 'italic', color: '#555' }}>
+        {newDeviceType === 'All'
+          ? 'Please select a specific device type to add a new device or modify thresholds.'
+          : thresholds[newDeviceType]
+            ? `Threshold set for ${newDeviceType}: min = ${thresholds[newDeviceType].min} ${unitMap[newDeviceType]}, max = ${thresholds[newDeviceType].max} ${unitMap[newDeviceType]}`
+            : `No threshold set for ${newDeviceType} yet.`}
+      </div>  
 
       <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, backgroundColor: '#f9f9f9', boxShadow: '0 0 8px rgba(0,0,0,0.05)', border: '1px solid #ddd' }}>
         <thead style={{ backgroundColor: '#e6f4ea' }}>

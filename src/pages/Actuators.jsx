@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 
 const actuatorTypes = [
+    'All',  
     'Heater',
     'Cooler',
     'Drip_Irrigation_Pipe',
@@ -12,19 +13,12 @@ const actuatorTypes = [
 
 export default function Actuators() {
   const [devices, setDevices] = useState([]);
-  const [newDeviceType, setNewDeviceType] = useState('Heater');
+  const [newDeviceType, setNewDeviceType] = useState('All');
   const [showAddForm, setShowAddForm] = useState(false);
   const [newDeviceData, setNewDeviceData] = useState({ location: ''});
 
   useEffect(()=>{
     fetchActuatorDevice()
-
-    //set a clock to refresh the web page
-    const intervalId = setInterval(() => {
-    fetchActuatorDevice();
-  }, 3000);
-
-  return () => clearInterval(intervalId);
   },[])
 
   const fetchActuatorDevice = () =>{
@@ -128,7 +122,7 @@ export default function Actuators() {
     updateActuatorStatus([id.split('-')[1]], !status)
   };
 
-  const filteredDevices = devices.filter(device => device.type === newDeviceType);
+  const filteredDevices = newDeviceType === 'All' ? devices : devices.filter(device => device.type === newDeviceType);
 
   const thStyle = { padding: '12px', textAlign: 'left', fontWeight: 'bold', borderBottom: '1px solid #ccc' };
   const tdStyle = { padding: '12px', borderBottom: '1px solid #eee' };
@@ -163,12 +157,13 @@ export default function Actuators() {
             <option key={type}>{type}</option>
           ))}
         </select>
-        <button style={switchBtnStyle} onClick={() => setShowAddForm(!showAddForm)}>Add Device</button>
+        <button style={{backgroundColor: newDeviceType === 'All' ? '#ccc' : switchBtnStyle.backgroundColor, padding: '6px 12px', 
+          border: 'none', borderRadius: '4px', cursor: newDeviceType === 'All' ? 'not-allowed' : 'pointer' }} onClick={() => setShowAddForm(!showAddForm)} disabled={newDeviceType === 'All'}>Add Device</button>
         <button style={{ ...switchBtnStyle, marginLeft: '10px' }} onClick={()=>toggleAll(true)}>Turn On All</button>
         <button style={{ ...switchBtnStyle, marginLeft: '10px' }} onClick={()=>toggleAll(false)}>Turn Off All</button>
       </div>
 
-      {showAddForm && (
+      {showAddForm && newDeviceType !== 'All' && (
         <div style={{ marginBottom: '20px' }}>
           <h3 style={{ marginBottom: '8px' }}>New Actuator Info</h3>
           <label>
@@ -192,7 +187,13 @@ export default function Actuators() {
             Submit
           </button>
         </div>
+        
       )}
+      <div style={{ marginTop: '10px', marginBottom: '20px', fontStyle: 'italic', color: '#555' }}>
+            {newDeviceType === 'All'
+              ? 'Please select a specific device type to add a new device.'
+              : ''}
+      </div>
       <table style={{
         width: '100%',
         borderCollapse: 'separate',

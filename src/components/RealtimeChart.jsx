@@ -10,7 +10,7 @@ const AVERAGE_API = 'http://127.0.0.1:8082/controller/getControllerAverageValue'
 
 const LABELS = {
   Temperature: 'Temperature (Cel)',
-  Soil_Moisture: 'Moisture (%)',
+  Soil_Moisture: 'Soil_Moisture (%)',
   Lightness: 'Lightness (lx)',
   CO2_Concentration: 'CO2_Concentration (ppm)',
 };
@@ -36,7 +36,6 @@ export default function RealtimeChart({ sensorType }) {
       }
     } catch (err) {
       console.error('Failed to fetch threshold:', err);
-      // 保持默认阈值
     }
   };
 
@@ -46,10 +45,10 @@ export default function RealtimeChart({ sensorType }) {
       if (!res.ok) throw new Error('Failed to fetch average values');
       const json = await res.json();
       
-      // 更安全的数据转换
+      
       const mapped = json.map(d => ({
-        time: new Date(d.time).getTime(), // 确保时间是数字
-        [sensorType]: Number(d[sensorType]) || 0 // 确保有数值
+        time: new Date(d.time).getTime(), 
+        [sensorType]: Number(d[sensorType]) || 0 
       }));
       
       setData(mapped);
@@ -69,12 +68,12 @@ export default function RealtimeChart({ sensorType }) {
     const intervalId = setInterval(() => {
       fetchAverageValue();
       fetchThreshold();
-    }, 1000);
+    }, 5000);
 
     return () => clearInterval(intervalId);
   }, [sensorType]);
 
-  // 更详细的加载和错误状态
+
   if (loading) return (
     <div style={{ 
       width: '500px', 
@@ -108,7 +107,7 @@ export default function RealtimeChart({ sensorType }) {
       height: '400px',
       backgroundColor: 'white',
       padding: '10px',
-      border: '1px transparent #f0f0f0', // 添加边框便于调试
+      border: '1px transparent #f0f0f0', 
       boxSizing: 'border-box'
     }}>
       <h2 style={{ marginBottom: '8px', fontSize: '24px' }}>{LABELS[sensorType]}</h2>
@@ -116,7 +115,7 @@ export default function RealtimeChart({ sensorType }) {
         Threshold: {threshold.min} - {threshold.max} | Data points: {data.length}
       </div>
       
-      {/* 添加边界检查 */}
+  
       {data.length > 0 ? (
         <LineChart 
           width={480}
