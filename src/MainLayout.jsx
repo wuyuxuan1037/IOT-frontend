@@ -60,7 +60,7 @@ export default function MainLayout() {
           </h2>
           <div style={{ marginBottom: '24px', fontWeight: 'bold', color: '#000' }}>
             <span style={{ fontFamily: 'monospace', fontSize: '16px' }}>Login: {userId || 'Not Logged In'}</span>
-            <button onClick={handleLogout} style={{ display: 'block', marginTop: '10px', padding: '6px 10px', fontSize: '13px', backgroundColor: '#38a169', color: 'white', border: 'none', borderRadius: '4px' }}>Logout</button>
+            <button onClick={handleLogout} style={{ display: 'block', marginTop: '10px', padding: '6px 10px', fontSize: '13px', backgroundColor: '#38a169', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Logout</button>
           </div>
           <ul style={{ listStyle: 'none', padding: 0, fontSize: '15px' }}>
             <li style={{ marginBottom: '16px' }}>
@@ -69,6 +69,16 @@ export default function MainLayout() {
               </Link>
             </li>
             <li style={{ marginBottom: '16px' }}>
+              <Link to="devices/sensors" style={navItemStyle('/devices/sensors')}>
+                Sensors Management
+              </Link>
+            </li>
+            <li style={{ marginBottom: '16px' }}>
+              <Link to="devices/actuators" style={navItemStyle('/devices/actuators')}>
+                Actuator Management
+              </Link>
+            </li>
+            {/* <li style={{ marginBottom: '16px' }}>
               <Link to="/devices" style={navItemStyle('/devices')}>
                 Devices Management
               </Link>
@@ -84,7 +94,7 @@ export default function MainLayout() {
                   </Link>
                 </li>
               </ul>
-            </li>
+            </li> */}
             <li style={{ marginTop: '16px' }}>
               <Link to="/history" style={navItemStyle('/history')}>
                 History
@@ -99,7 +109,7 @@ export default function MainLayout() {
           <Route path="/login" element={<Login setUserId={setUserId} />} />
           <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/devices" element={<ProtectedRoute><Devices /></ProtectedRoute>} />
+          {/* <Route path="/devices" element={<ProtectedRoute><Devices /></ProtectedRoute>} /> */}
           <Route path="/devices/sensors" element={<ProtectedRoute><Sensors /></ProtectedRoute>} />
           <Route path="/devices/actuators" element={<ProtectedRoute><Actuators /></ProtectedRoute>} />
           <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />

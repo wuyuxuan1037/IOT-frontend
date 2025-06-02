@@ -1,40 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-const generateActuators = (label, count) => {
-  const baseName = label
-    .replace(/ /g, '_')
-    .replace(/-/g, '_')
-    .replace(/[^a-zA-Z0-9_]/g, '');
-  const devices = [];
-  for (let i = 0; i < count; i++) {
-    const index = i + 1;
-    devices.push({
-      id: `${baseName}_${index}`,
-      type: label,
-      location: `location_${index}`,
-      active: true,
-      updateFrequency: '10s'
-    });
-  }
-  return devices;
-};
-
-const initialDevices = [
-  ...generateActuators('Heater', 6),
-  ...generateActuators('Cooler', 6),
-  ...generateActuators('Drip_Irrigation_Pipe', 6),
-  ...generateActuators('LED_Light', 6),
-  ...generateActuators('Carbon_Dioxide_Generator', 6),
-  ...generateActuators('Exhaust_Fan', 6),
-  ...generateActuators('Sunshade_Net', 6),
-];
-export default function Actuators() {
-  const [devices, setDevices] = useState(initialDevices);
-  const [newDeviceType, setNewDeviceType] = useState('Heater');
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newDeviceData, setNewDeviceData] = useState({ location: '', frequency: '' });
-
-  const actuatorTypes = [
+const actuatorTypes = [
     'Heater',
     'Cooler',
     'Drip_Irrigation_Pipe',
@@ -42,66 +8,124 @@ export default function Actuators() {
     'Carbon_Dioxide_Generator',
     'Exhaust_Fan',
     'Sunshade_Net'
-  ];
+];
 
-  const turnOnAll = () => {
-    setDevices(devices.map(d =>
-      d.type === newDeviceType ? { ...d, active: true } : d
-    ));
-  };
+export default function Actuators() {
+  const [devices, setDevices] = useState([]);
+  const [newDeviceType, setNewDeviceType] = useState('Heater');
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newDeviceData, setNewDeviceData] = useState({ location: ''});
 
-  const turnOffAll = () => {
-    setDevices(devices.map(d =>
-      d.type === newDeviceType ? { ...d, active: false } : d
-    ));
-  };
+  useEffect(()=>{
+    fetchActuatorDevice()
+
+    //set a clock to refresh the web page
+    const intervalId = setInterval(() => {
+    fetchActuatorDevice();
+  }, 3000);
+
+  return () => clearInterval(intervalId);
+  },[])
+
+  const fetchActuatorDevice = () =>{
+      fetch('http://127.0.0.1:8083/actuator/getActuatorDevice')
+      .then(res => res.json())
+      .then(data => {
+        const mapped = data.map(d =>({
+          type: d.deviceType,
+          id: `${d.deviceType}-${d.deviceID}`,
+          location: d.deviceLocation,
+          lastStatusUpdate: d.lastStatusUpdate,
+          status: d.status
+        }))
+        setDevices(mapped)
+      })
+      .catch(err => console.error("Failure to obtain:", err));
+  }
+
   const handleAddDeviceSubmit = async () => {
-    const location = newDeviceData.location.trim();
-    const freq = newDeviceData.frequency.trim();
-    if (!location || isNaN(freq) || Number(freq) <= 0) {
-      alert("Please enter a valid location and a positive numeric frequency.");
+    const location = document.getElementById('newLocation').value.trim();
+
+    if (!location) {
+      alert("Please enter location.");
       return;
     }
 
-    const sameType = devices.filter(d => d.type === newDeviceType);
-    const index = sameType.length + 1;
-    const baseName = newDeviceType
-      .replace(/ /g, '_')
-      .replace(/-/g, '_')
-      .replace(/[^a-zA-Z0-9_]/g, '');
-
     const newDevice = {
-      id: `${baseName}_${index}`,
       type: newDeviceType,
-      location,
-      active: true,
-      updateFrequency: `${freq}s`
+      location: location,
     };
 
-    setDevices([...devices, newDevice]);
-    setNewDeviceData({ location: '', frequency: '' });
-    setShowAddForm(false);
-
     try {
-      await fetch('/api/actuators', {
+      const response = await fetch('http://127.0.0.1:8083/actuator/addActuatorDevice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newDevice)
       });
-      console.log('Actuator submitted to backend');
+      if (!response.ok) {
+      throw new Error(`Server returned status ${response.status}`);
+    }
+      const result = await response.json();
+      console.log(result.message);
+      // reloading the updated information from the BackEnd
+      fetchActuatorDevice();
     } catch (err) {
-      console.error('Failed to submit actuator:', err);
+      console.error('Failed to send device to backend:', err);
+    }
+    setNewDeviceData({ location: '', frequency: '' });
+  };  
+
+  const deleteActuatorDevice = async (id) => {
+    const deviceID = {
+      deviceID: id.split('-')[1]
+    };
+    try {
+      const response = await fetch('http://127.0.0.1:8083/actuator/deleteActuatorDevice',{
+        method: 'POST',
+        headers:  {'Content-Type':'application/json'},
+        body: JSON.stringify(deviceID)
+      });
+
+      if (!response.ok){
+        throw new Error(`Failed to delete device. Status: ${response.status}`)
+      }
+
+      const result = await response.json();
+      console.log(result.message);
+      
+      fetchActuatorDevice()
+
+    } catch (err) {
+      console.error('Failed to delete:', err)
     }
   };
 
-  const deleteDevice = (id) => {
-    setDevices(devices.filter(device => device.id !== id));
+  const updateActuatorStatus = async (deviceIDs, targetStatus) => {
+    try {
+      const response = await fetch('http://127.0.0.1:8083/actuator/updateActuatorStatus',{
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          device_ids: deviceIDs,
+          target_status: targetStatus
+        })
+      });
+      if (!response.ok){
+        throw new Error('Update failed')
+      }
+      fetchActuatorDevice()
+    } catch (err) {
+      console.log('Failed to update device status',err)
+    }
+  }
+
+  const toggleAll = (status) => {
+    const ids = filteredDevices.map(d => d.id.split('-')[1]);
+    updateActuatorStatus(ids, status)
   };
 
-  const toggleDevice = (id) => {
-    setDevices(devices.map(device =>
-      device.id === id ? { ...device, active: !device.active } : device
-    ));
+  const toggleDevice = (id,status) => {
+    updateActuatorStatus([id.split('-')[1]], !status)
   };
 
   const filteredDevices = devices.filter(device => device.type === newDeviceType);
@@ -111,10 +135,9 @@ export default function Actuators() {
   const rowStyle = (index) => ({
     backgroundColor: index % 2 === 0 ? '#ffffff' : '#f5f5f5',
     transition: 'background-color 0.2s',
-    cursor: 'pointer'
   });
-  const switchBtnStyle = { backgroundColor: '#d4edda', padding: '6px 12px', border: 'none', borderRadius: '4px' };
-  const deleteBtnStyle = { backgroundColor: '#f8d7da', padding: '6px 12px', border: 'none', borderRadius: '4px', marginLeft: '10px' };
+  const switchBtnStyle = { backgroundColor: '#d4edda', padding: '6px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer' };
+  const deleteBtnStyle = { backgroundColor: '#f8d7da', padding: '6px 12px', border: 'none', borderRadius: '4px', marginLeft: '10px', cursor: 'pointer' };
   return (
     <div style={{ padding: '24px' }}>
       <h1 style={{
@@ -134,15 +157,15 @@ export default function Actuators() {
           id="deviceType"
           value={newDeviceType}
           onChange={(e) => setNewDeviceType(e.target.value)}
-          style={{ marginRight: '10px' }}
+          style={{ marginRight: '10px', cursor: 'pointer'}}
         >
           {actuatorTypes.map(type => (
             <option key={type}>{type}</option>
           ))}
         </select>
         <button style={switchBtnStyle} onClick={() => setShowAddForm(!showAddForm)}>Add Device</button>
-        <button style={{ ...switchBtnStyle, marginLeft: '10px' }} onClick={turnOnAll}>Turn On All</button>
-        <button style={{ ...switchBtnStyle, marginLeft: '10px' }} onClick={turnOffAll}>Turn Off All</button>
+        <button style={{ ...switchBtnStyle, marginLeft: '10px' }} onClick={()=>toggleAll(true)}>Turn On All</button>
+        <button style={{ ...switchBtnStyle, marginLeft: '10px' }} onClick={()=>toggleAll(false)}>Turn Off All</button>
       </div>
 
       {showAddForm && (
@@ -151,19 +174,20 @@ export default function Actuators() {
           <label>
             Location:{' '}
             <input
+              id = "newLocation"
               type="text"
               value={newDeviceData.location}
               onChange={(e) => setNewDeviceData({ ...newDeviceData, location: e.target.value })}
             />
           </label>
-          <label style={{ marginLeft: '10px' }}>
+          {/* <label style={{ marginLeft: '10px' }}>
             Update Frequency (s):{' '}
             <input
               type="text"
               value={newDeviceData.frequency}
               onChange={(e) => setNewDeviceData({ ...newDeviceData, frequency: e.target.value })}
             />
-          </label>
+          </label> */}
           <button style={{ ...switchBtnStyle, marginLeft: '10px' }} onClick={handleAddDeviceSubmit}>
             Submit
           </button>
@@ -181,7 +205,7 @@ export default function Actuators() {
           <tr>
             <th style={thStyle}>Actuator ID</th>
             <th style={thStyle}>Location</th>
-            <th style={thStyle}>Description</th>
+            <th style={thStyle}>Last Status Update</th>
             <th style={thStyle}>Active</th>
             <th style={thStyle}>Actions</th>
           </tr>
@@ -196,17 +220,17 @@ export default function Actuators() {
             >
               <td style={tdStyle}>{device.id}</td>
               <td style={tdStyle}>{device.location}</td>
-              <td style={tdStyle}>{device.updateFrequency}</td>
+              <td style={tdStyle}>{device.lastStatusUpdate}</td>
               <td style={{
                 ...tdStyle,
                 fontWeight: 'bold',
-                color: device.active ? 'green' : 'red'
+                color: device.status ? 'green' : 'red'
               }}>
-                {device.active ? 'on' : 'off'}
+                {device.status ? 'on' : 'off'}
               </td>
               <td style={tdStyle}>
-                <button style={switchBtnStyle} onClick={() => toggleDevice(device.id)}>Switch</button>
-                <button style={deleteBtnStyle} onClick={() => deleteDevice(device.id)}>Delete</button>
+                <button style={switchBtnStyle} onClick={() => toggleDevice(device.id, device.status)}>Switch</button>
+                <button style={deleteBtnStyle} onClick={() => deleteActuatorDevice(device.id)}>Delete</button>
               </td>
             </tr>
           ))}

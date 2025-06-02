@@ -15,8 +15,13 @@ export default function Sensors() {
   const [thresholdsInput, setThresholdsInput] = useState({ min: '', max: '' });
   const [activeSection, setActiveSection] = useState(null); //'addDevice' / 'threshold' / null
 
+  useEffect(() => {
+    fetchDevices();
+    fetchThreshold();
+  }, []);
+
   const fetchDevices = () => {
-    fetch('http://127.0.0.1:8080/sensor/getSensorDevice')
+    fetch('http://127.0.0.1:8081/sensor/getSensorDevice')
       .then(res => res.json())
       .then(data => {
         const mapped = data.map(d => ({
@@ -33,7 +38,7 @@ export default function Sensors() {
   };
 
   const fetchThreshold = () => {
-    fetch('http://127.0.0.1:8080/controller/getControllerThreshold')
+    fetch('http://127.0.0.1:8082/controller/getControllerThreshold')
       .then(res => res.json())
       .then(data => {
         const mapped = {};
@@ -47,11 +52,6 @@ export default function Sensors() {
       })
       .catch(err => console.error("Failure to obtain:", err));
   };
-
-  useEffect(() => {
-    fetchDevices();
-    fetchThreshold();
-  }, []);
 
   const handleAddDeviceSubmit = async () => {
     const location = document.getElementById('newLocation').value.trim();
@@ -70,7 +70,7 @@ export default function Sensors() {
     };
 
     try {
-      const response = await fetch('http://127.0.0.1:8080/sensor/addSensorDevice', {
+      const response = await fetch('http://127.0.0.1:8081/sensor/addSensorDevice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newDevice)
@@ -89,12 +89,12 @@ export default function Sensors() {
     document.getElementById('newFrequency').value = '';
   };  
 
-  const deleteDevice = async (id) => {
+  const deleteSensorDevice = async (id) => {
     const deviceID = {
       deviceID: id.split('-')[1]
     };
     try {
-      const response = await fetch('http://127.0.0.1:8080/sensor/deleteSensorDevice',{
+      const response = await fetch('http://127.0.0.1:8081/sensor/deleteSensorDevice',{
         method: 'POST',
         headers:  {'Content-Type':'application/json'},
         body: JSON.stringify(deviceID)
@@ -114,9 +114,9 @@ export default function Sensors() {
     }
   };
 
-  const updateDeviceStatus = async (deviceIDs, targetStatus) => {
+  const updateSensorStatus = async (deviceIDs, targetStatus) => {
     try {
-      const response = await fetch('http://127.0.0.1:8080/sensor/updateDeviceStatus',{
+      const response = await fetch('http://127.0.0.1:8081/sensor/updateSensorStatus',{
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
@@ -127,19 +127,19 @@ export default function Sensors() {
       if (!response.ok){
         throw new Error('Update failed')
       }
-      await fetchDevices()
+      fetchDevices()
     } catch (err) {
       console.log('Failed to update device status',err)
     }
   }
 
   const toggleDevice = (id, active) => {
-    updateDeviceStatus([id.split('-')[1]], !active)
+    updateSensorStatus([id.split('-')[1]], !active)
   };
 
   const toggleAll = (turnOn) => {
     const ids = filteredDevices.map(d => d.id.split('-')[1]);
-    updateDeviceStatus(ids, turnOn)
+    updateSensorStatus(ids, turnOn)
   };
 
   const handleSetThreshold = async () => {
@@ -152,7 +152,7 @@ export default function Sensors() {
     }
 
     try {
-      const response = await fetch('http://127.0.0.1:8080/controller/updateControllerThreshold', {
+      const response = await fetch('http://127.0.0.1:8082/controller/updateControllerThreshold', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body: JSON.stringify({
@@ -267,7 +267,7 @@ export default function Sensors() {
               <td style={{ ...tdStyle, fontWeight: 'bold', color: device.active ? 'green' : 'red' }}>{device.active ? 'on' : 'off'}</td>
               <td style={tdStyle}>
                 <button style={switchBtnStyle} onClick={() => toggleDevice(device.id, device.active)}>Switch</button>
-                <button style={deleteBtnStyle} onClick={() => deleteDevice(device.id)} >Delete</button>
+                <button style={deleteBtnStyle} onClick={() => deleteSensorDevice(device.id)} >Delete</button>
               </td>
             </tr>
           ))}
