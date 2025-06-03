@@ -4,30 +4,28 @@ export default function History() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
 
   const fetchHistoryData = async () => {
     try {
       console.log('开始获取数据...');
-      
-      const response = await fetch('http://127.0.0.1:5002/getHistoryData');
-      
+      const response = await fetch('http://127.0.0.1:8084/DBreader/getAllHistoryData');
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const result = await response.json();
       console.log('收到的原始数据:', result);
-      
-      // 检查是否是错误响应
+
       if (result.status === 'error') {
         throw new Error(result.message);
       }
-      
-      // 处理不同的数据格式
+
       let processedData = [];
-      
+
       if (Array.isArray(result)) {
-        // 如果直接返回数组
         processedData = result.map(d => ({
           DeviceID: d.deviceID,
           Location: d.deviceLocation,
@@ -37,7 +35,6 @@ export default function History() {
           Time: d.timestamp
         }));
       } else if (result.data && typeof result.data === 'object') {
-        // 如果返回的是 {status: "success", data: {...}}
         processedData = Object.entries(result.data).map(([deviceId, deviceData]) => {
           if (deviceData) {
             return {
@@ -52,11 +49,10 @@ export default function History() {
           return null;
         }).filter(Boolean);
       }
-      
+
       console.log('处理后的数据:', processedData);
       setData(processedData);
       setError(null);
-      
     } catch (err) {
       console.error("获取数据失败:", err);
       setError(err.message);
@@ -68,6 +64,19 @@ export default function History() {
   useEffect(() => {
     fetchHistoryData();
   }, []);
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentData = data.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(data.length / itemsPerPage);
+
+  const handlePrevPage = () => {
+    setCurrentPage(prev => Math.max(prev - 1, 1));
+  };
+
+  const handleNextPage = () => {
+    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  };
 
   return (
     <div style={{ padding: '24px' }}>
@@ -86,12 +95,12 @@ export default function History() {
       </h1>
 
       {loading && <p>Loading...</p>}
-      
+
       {error && (
-        <div style={{ 
-          color: 'red', 
-          padding: '10px', 
-          border: '1px solid red', 
+        <div style={{
+          color: 'red',
+          padding: '10px',
+          border: '1px solid red',
           borderRadius: '4px',
           marginBottom: '20px'
         }}>
@@ -100,37 +109,59 @@ export default function History() {
       )}
 
       {!loading && !error && data.length === 0 && (
-        <p>Loading</p>
+        <p>No data available.</p>
       )}
 
       {!loading && !error && data.length > 0 && (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#f0f0f0' }}>
-              <th style={thStyle}>DeviceID</th>
-              <th style={thStyle}>Location</th>
-              <th style={thStyle}>DeviceType</th>
-              <th style={thStyle}>Value</th>
-              <th style={thStyle}>Unit</th>
-              <th style={thStyle}>Time</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((entry, index) => (
-              <tr key={index} style={{ borderBottom: '1px solid #ddd' }}>
-                <td style={tdStyle}>{entry.DeviceID}</td>
-                <td style={tdStyle}>{entry.Location}</td>
-                <td style={tdStyle}>{entry.DeviceType}</td>
-                <td style={tdStyle}>{entry.Value}</td>
-                <td style={tdStyle}>{entry.Unit}</td>
-                <td style={tdStyle}>{entry.Time}</td>
+        <>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#f0f0f0' }}>
+                <th style={thStyle}>DeviceID</th>
+                <th style={thStyle}>Location</th>
+                <th style={thStyle}>DeviceType</th>
+                <th style={thStyle}>Value/Status</th>
+                <th style={thStyle}>Unit</th>
+                <th style={thStyle}>Time</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {currentData.map((entry, index) => (
+                <tr key={index} style={{ borderBottom: '1px solid #ddd' }}>
+                  <td style={tdStyle}>{entry.DeviceID}</td>
+                  <td style={tdStyle}>{entry.Location}</td>
+                  <td style={tdStyle}>{entry.DeviceType}</td>
+                  <td style={tdStyle}>
+                    {typeof entry.Value === 'boolean' ? (entry.Value ? 'On' : 'Off') : entry.Value}
+                  </td>
+                  <td style={tdStyle}>
+                    {typeof entry.Value === 'boolean' ? '' : entry.Unit}
+                  </td>
+                  <td style={tdStyle}>
+                    {new Date(entry.Time * 1000).toLocaleString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'center', gap: '16px', alignItems: 'center' }}>
+            <button style={pagebutton} onClick={handlePrevPage} disabled={currentPage === 1}>
+              Previous
+            </button>
+            <span>Page {currentPage}  / Total {totalPages} </span>
+            <button style={pagebutton}onClick={handleNextPage} disabled={currentPage === totalPages}>
+              Next
+            </button>
+          </div>
+        </>
       )}
     </div>
   );
+}
+
+const pagebutton = {
+  backgroundColor: '#d4edda', padding: '6px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer' 
 }
 
 const thStyle = {

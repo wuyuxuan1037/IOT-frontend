@@ -19,6 +19,12 @@ export default function Actuators() {
 
   useEffect(()=>{
     fetchActuatorDevice()
+
+    const intervalId = setInterval(() => {
+      fetchActuatorDevice()
+    }, 3000);
+
+    return () => clearInterval(intervalId);
   },[])
 
   const fetchActuatorDevice = () =>{

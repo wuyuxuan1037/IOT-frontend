@@ -15,10 +15,21 @@ export default function Sensors() {
   const [thresholdsInput, setThresholdsInput] = useState({ min: '', max: '' });
   const [activeSection, setActiveSection] = useState(null); //'addDevice' / 'threshold' / null
 
-  useEffect(() => {
+  useEffect(()=>{
     fetchDevices();
     fetchThreshold();
-  }, []);
+  },[])
+
+  useEffect(() => {
+    if (newDeviceType !== 'All' && thresholds[newDeviceType]) {
+    setThresholdsInput({
+      min: thresholds[newDeviceType].min,
+      max: thresholds[newDeviceType].max
+    });
+    } else {
+      setThresholdsInput({ min: '', max: '' });
+    }
+  }, [newDeviceType, thresholds]);
 
   const fetchDevices = () => {
     fetch('http://127.0.0.1:8081/sensor/getSensorDevice')
@@ -55,33 +66,29 @@ export default function Sensors() {
 
   const handleAddDeviceSubmit = async () => {
     const location = document.getElementById('newLocation').value.trim();
-    const freq = Number(document.getElementById('newFrequency').value.trim());
+    const frequency = Number(document.getElementById('newFrequency').value);
 
-    if (!location || isNaN(freq) || Number(freq) <= 0) {
-      alert("Please enter valid location and a positive numeric frequency.");
-      return;
-    }
-
-    const newDevice = {
-      type: newDeviceType,
-      location: location,
-      updateFrequency: freq,
-      unit:unitMap[newDeviceType]
-    };
+    if (!location && !frequency) {
+    alert("Location and Frequency is required.");
+    return;
+  }
 
     try {
       const response = await fetch('http://127.0.0.1:8081/sensor/addSensorDevice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newDevice)
-      });
+        body: JSON.stringify({type: newDeviceType,
+                              location: location,
+                              updateFrequency: frequency,
+                              unit: unitMap[newDeviceType]})
+        });
       if (!response.ok) {
       throw new Error(`Server returned status ${response.status}`);
     }
       const result = await response.json();
       console.log(result.message);
       // reloading the updated information from the BackEnd
-      fetchDevices();
+    await fetchDevices();
     } catch (err) {
       console.error('Failed to send device to backend:', err);
     }
@@ -236,17 +243,13 @@ export default function Sensors() {
           <h3 style={{ marginBottom: '8px' }}>Threshold</h3>
           <label>
             Min ({unitMap[newDeviceType]}):{' '}
-            <input id = "changeMinThreshold" placeholder={thresholds[newDeviceType]
-                  ? `Current MIN is ${thresholds[newDeviceType].min}`
-                  : 'No Min set'
-              } type="number" />
+            <input id = "changeMinThreshold"  value={thresholdsInput.min}
+                  onChange={(e) => setThresholdsInput(prev => ({ ...prev, min: e.target.value }))}  type="number" />
           </label>
           <label style={{ marginLeft: '10px' }}>
             Max ({unitMap[newDeviceType]}):{' '}
-            <input id = "changeMaxThreshold" placeholder={thresholds[newDeviceType]
-                  ? `Current MAX is ${thresholds[newDeviceType].max}`
-                  : 'No Max set'
-              } type="number" />
+            <input id = "changeMaxThreshold" value={thresholdsInput.max}
+                  onChange={(e) => setThresholdsInput(prev => ({ ...prev, max: e.target.value }))} type="number" />
           </label>
           <button onClick={handleSetThreshold} style={{ ...switchBtnStyle, marginLeft: '10px',backgroundColor: switchBtnStyle.backgroundColor,
                       cursor: 'pointer' }} >Save</button>
