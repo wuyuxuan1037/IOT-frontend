@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 export default function History() {
   const [data, setData] = useState([]);
+  const [newDeviceType, setNewDeviceType] = useState("All");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -65,10 +66,14 @@ export default function History() {
     fetchHistoryData();
   }, []);
 
+  const filteredData = newDeviceType === 'All'
+  ? data
+  : data.filter(item => item.DeviceType === newDeviceType);
+
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentData = data.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(data.length / itemsPerPage);
+  const currentData = filteredData.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
 
   const handlePrevPage = () => {
     setCurrentPage(prev => Math.max(prev - 1, 1));
@@ -111,6 +116,25 @@ export default function History() {
       {!loading && !error && data.length === 0 && (
         <p>No data available.</p>
       )}
+      <label htmlFor="deviceType">Filter by Device Type: </label>
+        <select id="deviceType" value={newDeviceType} onChange={(e) => setNewDeviceType(e.target.value)} style={{ marginRight: '10px', cursor: 'pointer' }}>
+          <option value="All">All</option>
+          <option value="Temperature">Temperature</option>
+          <option value="Soil_Moisture">Soil_Moisture</option>
+          <option value="Lightness">Lightness</option>
+          <option value="CO2_Concentration">CO2_Concentration</option>
+          <option value="Cooler">Cooler</option>
+          <option value="Heater">Heater</option>
+          <option value="Drip_Irrigation_Pipe">Drip_Irrigation_Pipe</option>
+          <option value="Exhaust_Fan">Exhaust_Fan</option>
+          <option value="Carbon_Dioxide_Generator">Carbon_Dioxide_Generator</option>
+          <option value="Sunshade_Net">Sunshade_Net</option>
+          <option value="LED_Light">LED_Light</option>
+        </select>
+
+      <div style={{ marginTop: '10px', marginBottom: '20px', fontStyle: 'italic', color: '#555' }}>
+        You could select a specific device type to see records.
+      </div> 
 
       {!loading && !error && data.length > 0 && (
         <>
