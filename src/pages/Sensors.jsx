@@ -4,7 +4,7 @@ import { useState, useEffect  } from 'react';
 const unitMap = {
   'Temperature': 'Cel',
   'Soil_Moisture': '%',
-  'Lightness': 'lx',
+  'Light_Intensity': 'lx',
   'CO2_Concentration': 'ppm',
 };
 
@@ -202,7 +202,7 @@ export default function Sensors() {
           <option value="All">All</option>
           <option value="Temperature">Temperature</option>
           <option value="Soil_Moisture">Soil_Moisture</option>
-          <option value="Lightness">Lightness</option>
+          <option value="Light_Intensity">Light_Intensity</option>
           <option value="CO2_Concentration">CO2_Concentration</option>
         </select>
         <button style={{backgroundColor: newDeviceType === 'All' ? '#ccc' : switchBtnStyle.backgroundColor, padding: '6px 12px', 

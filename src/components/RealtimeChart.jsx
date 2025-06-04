@@ -11,7 +11,7 @@ const AVERAGE_API = 'http://127.0.0.1:8082/controller/getControllerAverageValue'
 const LABELS = {
   Temperature: 'Temperature (Cel)',
   Soil_Moisture: 'Soil_Moisture (%)',
-  Lightness: 'Lightness (lx)',
+  Light_Intensity: 'Light_Intensity (lx)',
   CO2_Concentration: 'CO2_Concentration (ppm)',
 };
 

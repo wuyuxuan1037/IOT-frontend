@@ -19,7 +19,7 @@ export default function Dashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginLeft: '22px' }}>
         <RealtimeChart sensorType="Temperature" />
         <RealtimeChart sensorType="Soil_Moisture" />
-        <RealtimeChart sensorType="Lightness" />
+        <RealtimeChart sensorType="Light_Intensity" />
         <RealtimeChart sensorType="CO2_Concentration" />
       </div>
     </div>

@@ -121,7 +121,7 @@ export default function History() {
           <option value="All">All</option>
           <option value="Temperature">Temperature</option>
           <option value="Soil_Moisture">Soil_Moisture</option>
-          <option value="Lightness">Lightness</option>
+          <option value="Light_Intensity">Light_Intensity</option>
           <option value="CO2_Concentration">CO2_Concentration</option>
           <option value="Cooler">Cooler</option>
           <option value="Heater">Heater</option>
