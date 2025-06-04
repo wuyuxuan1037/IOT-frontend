@@ -159,7 +159,7 @@ export default function History() {
                     {typeof entry.Value === 'boolean' ? (entry.Value ? 'On' : 'Off') : entry.Value}
                   </td>
                   <td style={tdStyle}>
-                    {typeof entry.Value === 'boolean' ? '' : entry.Unit}
+                    {typeof entry.Value === 'boolean' ? '-' : entry.Unit}
                   </td>
                   <td style={tdStyle}>
                     {new Date(entry.Time * 1000).toLocaleString()}
